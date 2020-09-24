@@ -8,8 +8,7 @@ NULL
 
 missingValues <- function(QCreportObject) {
 
-  countna <- function(x)
-    return(sum(is.na(x))
+  countna <- function(x) return(sum(is.na(x)))
 
   # Remove QC lead samples from peakMatrix
   rem_hits <- which(QCreportObject$metaData$samp_lab=="Removed")
