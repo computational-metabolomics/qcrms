@@ -173,7 +173,7 @@ test_that("createQCreportObject works with XCMS LCMS data outputs", {
     expect_equal(QCreport$plots$MVplot1$data$x[7], 17.910447761194)
     expect_equal(QCreport$plots$MVplot2$data$x[10], 50)
     expect_equal(QCreport$plots$MVplot3$data$class[6], 20.1492537313433)
-    expect_equal(QCreport$plots$MVplot4$data$class[531], 400)
+    expect_equal(QCreport$plots$MVplot4$data$class[531], 20)
 
     expect_equal(QCreport$plots$RSDplot1$data$list_object[153],
         42.1033162472477)
