@@ -1,10 +1,11 @@
-#' @import xcms
-#' @import openxlsx
+#' @importFrom openxlsx read.xlsx
+#' @importFrom openxlsx getSheetNames
 #' @importFrom dplyr left_join
 #' @importFrom mzR openMSfile
 #' @importFrom mzR tic
 #' @importFrom mzR close
 #' @importFrom utils read.table
+#' @importFrom MSnbase fileNames
 #'
 NULL
 
@@ -23,11 +24,22 @@ get_file_extension <- function(file_paths) {
 #' 
 #' @param QCreportObject Qcreport object
 
-locate_raw_files <- function(QCreportObject) {
-    file_extension <- get_file_extension(QCreportObject$xset@filepaths)
-    raw_paths <- paste(QCreportObject$raw_path, "/",
+locate_raw_files <- function(QCreportObject){
+    if (is(QCreportObject$xset, "xcmsSet")){
+        file_extension <- get_file_extension(QCreportObject$xset@filepaths)
+    } 
+    else if (is(QCreportObject$xset, "XCMSnExp")){
+        file_extension <-
+            get_file_extension(MSnbase::fileNames(QCreportObject$xset))
+    }
+    
+    if (length(grep(file_extension, QCreportObject$metaData$table$Sample)) == 0){
+        raw_paths <- paste(QCreportObject$raw_path, "/",
         QCreportObject$metaData$table$Sample, file_extension, sep="")
-
+    } else {
+        raw_paths <- paste(QCreportObject$raw_path, "/",
+        QCreportObject$metaData$table$Sample, sep="")
+    }
     ## If files are located across multiple folders, locate them one-by-one
     if (!all(file.exists(raw_paths))) {
         files_to_locate <- paste0(row.names(QCreportObject$xset@phenoData),
@@ -77,30 +89,38 @@ meta_data_from_filenames <- function(QCreportObject) {
 
 sampleSummary <- function(QCreportObject) {
   if (!is.null(QCreportObject$xset)) {
-
-    QCreportObject$metaData$table <- data.frame(
-      Sample=rownames(QCreportObject$xset@phenoData),
-      xcms_class=QCreportObject$xset@phenoData$class,
-      stringsAsFactors=FALSE)
+    if (is(QCreportObject$xset, "xcmsSet")){
+      QCreportObject$metaData$table <- data.frame(
+          Sample=rownames(QCreportObject$xset@phenoData),
+          xcms_class=QCreportObject$xset@phenoData$class,
+          stringsAsFactors=FALSE)
+    }
+    else if (is(QCreportObject$xset, "XCMSnExp")){
+      QCreportObject$metaData$table <- data.frame(
+          Sample=rownames(pData(QCreportObject$xset)),
+          xcms_class=pData(QCreportObject$xset)$sample_group,
+          stringsAsFactors=FALSE)
+    }
     if (length(unique(QCreportObject$metaData$table$xcms_class)) == 1L) {
       QCreportObject$metaData$table$xcms_class <- NULL
     }
   } else {
     QCreportObject$metaData$table <- data.frame(Sample=
-      colnames(QCreportObject$peakMatrix), stringsAsFactors=F)
+      colnames(QCreportObject$peakMatrix), stringsAsFactors=FALSE)
   }
 
   if (!is.null(QCreportObject$metaData$file)) {
     if (grepl(".xls", tolower(QCreportObject$metaData$file)) ||
         tolower(tools::file_ext(QCreportObject$metaData$file)) %in%
         c("xls", "xlsx")) {
-      if ("metaData" %in% getSheetNames(QCreportObject$metaData$file)) {
+      if ("metaData" %in%
+          openxlsx:: getSheetNames(QCreportObject$metaData$file)) {
         sheet <- "metaData"
       } else {
         sheet <- 1L
       }
-      metaDataTable <- read.xlsx(xlsxFile=QCreportObject$metaData$file,
-        sheet=sheet)
+      metaDataTable <- openxlsx::read.xlsx(
+          xlsxFile=QCreportObject$metaData$file, sheet=sheet)
     } else {
       metaDataTable <- read.csv(QCreportObject$metaData$file, header=TRUE,
         check.names=FALSE, stringsAsFactors=FALSE)
@@ -143,19 +163,36 @@ sampleSummary <- function(QCreportObject) {
       QCreportObject$peakMatrix[, -c(msms_sample_hits)]
     QCreportObject$metaData$table <-
       QCreportObject$metaData$table[-c(msms_sample_hits), ]
-    # Phenodata
-    QCreportObject$xset@phenoData <- QCreportObject$
-      xset@phenoData[-c(msms_sample_hits), , drop=FALSE]
-    # rt
-    QCreportObject$xset@rt$raw[msms_sample_hits] <- NULL
-    QCreportObject$xset@rt$corrected[msms_sample_hits] <- NULL
+    if (is(QCreportObject$xset, "xcmsSet")){
+        # Phenodata
+        QCreportObject$xset@phenoData <- QCreportObject$
+        xset@phenoData[-c(msms_sample_hits), , drop=FALSE]
+        # rt
+        QCreportObject$xset@rt$raw[msms_sample_hits] <- NULL
+        QCreportObject$xset@rt$corrected[msms_sample_hits] <- NULL
+    }
+    if (is(QCreportObject$xset, "XCMSnExp")){
+        # Phenodata
+        QCreportObject$xset@phenoData <- QCreportObject$
+        xset@phenoData[-c(msms_sample_hits), , drop=FALSE]
+        # rt, TODO, Check where I am using RT list
+        #'xcms::rtime(QCreportObject$xset, adjusted=FALSE, 
+        #'    bySample=TRUE)[msms_sample_hits] <- NULL
+        #'QCreportObject$xset@rt$corrected[msms_sample_hits] <- NULL
+    }
   }
 
   if (!is.null(QCreportObject$raw_path)) {
-    QCreportObject$raw_paths <- locate_raw_files(QCreportObject)
+      QCreportObject$raw_paths <- locate_raw_files(QCreportObject)
   } else if (!is.null(QCreportObject$xset)) {
-      QCreportObject$raw_paths <-
-        QCreportObject$xset@filepaths
+      if (is(QCreportObject$xset, "xcmsSet")){
+          QCreportObject$raw_paths <-
+              QCreportObject$xset@filepaths
+      }
+      else if(is(QCreportObject$xset, "XCMSnExp")){
+          QCreportObject$raw_paths <-
+              MSnbase::fileNames(QCreportObject$xset)
+      }
       if (length(msms_sample_hits) > 0L) {
         QCreportObject$raw_paths <- QCreportObject$raw_paths[-msms_sample_hits]
       }
@@ -190,8 +227,12 @@ sampleSummary <- function(QCreportObject) {
   QCreportObject$TICdata <- vector("list", nrow(QCreportObject$metaData$table))
 
   if (!is.null(QCreportObject$xset)) {
-
-    peakt <- QCreportObject$xset@peaks
+    if (is(QCreportObject$xset, "xcmsSet")){
+        peakt <- QCreportObject$xset@peaks
+    }
+    else if (is(QCreportObject$xset, "XCMSnExp")){
+        peakt <- xcms::chromPeaks(QCreportObject$xset)
+    }
 
     ## Remove MS/MS data files
     if (length(msms_sample_hits) > 0L) {

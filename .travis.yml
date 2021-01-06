@@ -1,6 +1,6 @@
 language: r
 r:
-  - oldrel
+  - release
 
 bioc_required: true
 
@@ -21,7 +21,7 @@ addons:
       - netcdf-bin
       - libhdf5-dev
 
-r_github_packages: computational-metabolomics/pmp@R_3.6.x
+r_github_packages: computational-metabolomics/qcrmsData
 
 after_success:
     - Rscript -e 'covr::codecov()'

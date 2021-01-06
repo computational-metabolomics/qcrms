@@ -1,4 +1,5 @@
-#' @import xcms
+#' @importFrom xcms groupval
+#' @importFrom xcms featureValues
 #' @importFrom utils read.csv
 NULL
 
@@ -94,21 +95,17 @@ createQCreportObject <- function(data_file,
       stop("Please check that XCMS object set in xcms_ouput can't be located.")
     }
 
-    if (class(get(QCreportObject$xcms_output)) == "xcmsSet") {
+    if (is(get(QCreportObject$xcms_output), "xcmsSet")) {
       QCreportObject$xset <- get(QCreportObject$xcms_output)
       QCreportObject$xcms_class <- "xcmsSet"
-    } else if (class(get(QCreportObject$xcms_output)) == "XCMSnExp") {
-      QCreportObject$xset <- as(get(QCreportObject$xcms_output), "xcmsSet")
-      rownames(QCreportObject$xset@phenoData) <- sub(".mzML", "",
-        rownames(QCreportObject$xset@phenoData))
-      QCreportObject$xset@phenoData$class <-
-        rep(1L, nrow(QCreportObject$xset@phenoData))
-      QCreportObject$xset@phenoData$sampleNames <- NULL
-      QCreportObject$xcms_class <- "XCMSnExp"
-    }
-
-    QCreportObject$peakMatrix <- xcms::groupval(object=QCreportObject$xset,
+      QCreportObject$peakMatrix <- xcms::groupval(object=QCreportObject$xset,
       method="medret", value="into", intensity="into")
+    } else if (is(get(QCreportObject$xcms_output), "XCMSnExp")) {
+      QCreportObject$xset <- get(QCreportObject$xcms_output)
+      QCreportObject$xcms_class <- "XCMSnExp"
+      QCreportObject$peakMatrix <- xcms::featureValues(object=QCreportObject$xset,
+      method="medret", value="into", intensity="into")
+    }
 
   } else {
     if (!file.exists(QCreportObject$data_file)) {
