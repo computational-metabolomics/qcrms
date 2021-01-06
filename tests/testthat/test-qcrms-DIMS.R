@@ -75,7 +75,7 @@ test_that("createQCreportObject can parse csv text file inputs", {
     expect_equal(QCreport$plots$MVplot2$data$x[99], 18.91892,
         tolerance=1^-7)
     expect_equal(QCreport$plots$MVplot3$data$class[136], 7)
-    expect_equal(QCreport$plots$MVplot4$data$class[288], 32.529659395331)
+    expect_equal(QCreport$plots$MVplot4$data$class[288], 25.4, tolerance = 0.01)
     
     expect_equal(QCreport$plots$RSDplot1$data$list_object[153], 30.63364,
         tolerance=1^-7)
