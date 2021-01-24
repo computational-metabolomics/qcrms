@@ -274,10 +274,10 @@ test_that("createQCreportObject works with XCMS LCMS data outputs", {
 
     expect_equivalent(QCreport$TICs[10], c(`11` = 575133855.059309))
 
-    expect_equivalent(QCreport$TICraw[1], 0)
+    expect_equivalent(QCreport$TICraw[1], 1.24e+09, tolerance=200)
 
-    expect_null(QCreport$TICdata[[3]])
-
+    expect_equivalent(QCreport$TICdata[[3]][c(1,4)], c(1013184, 1029485))
+   
     expect_equivalent(QCreport$samp.sum[c(1, 5, 7), ],
         data.frame(
             Sample=c("ko15", "ko21", "wt16"),
