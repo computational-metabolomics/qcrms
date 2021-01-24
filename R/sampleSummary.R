@@ -6,6 +6,8 @@
 #' @importFrom mzR close
 #' @importFrom utils read.table
 #' @importFrom MSnbase fileNames
+#' @importFrom MSnbase chromatogram
+#' @importFrom MSnbase readMSData
 #'
 NULL
 
@@ -251,10 +253,19 @@ sampleSummary <- function(QCreportObject) {
     for (sn in seq_len(length(QCreportObject$TICraw))) {
       if (file.exists(QCreportObject$raw_paths[sn])) {
         A <- mzR::openMSfile(QCreportObject$raw_paths[sn])
+        # TODO, check why and if this fails on mzML files.
         tic <- tryCatch(mzR::tic(A), error=function(e) {return(NULL)})
         QCreportObject$TICraw[sn] <- sum(tic$TIC)
         QCreportObject$TICdata[[sn]] <- tic$TIC
         mzR::close(A)
+        # If faster extraction of TIC fails, use slower MSnbase method
+        if (is.null(tic))
+        {
+          A <- MSnbase::readMSData(QCreportObject$raw_paths[sn], msLevel=1)
+          tic <- MSnbase::chromatogram(A)
+          QCreportObject$TICraw[sn] <- sum(MSnbase::intensity(tic[1, 1]))
+          QCreportObject$TICdata[[sn]] <- MSnbase::intensity(tic[1, 1])
+        }
         rm(A, tic)
       }
     }
